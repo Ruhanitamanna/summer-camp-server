@@ -66,13 +66,22 @@ async function run() {
 
 // database collections
 const allDataCollection = client.db("summerCamp").collection("allData");
-const usersCollection = client.db("summerCamp").collection("users")
+const usersCollection = client.db("summerCamp").collection("users");
+const classesCollection = client.db("summerCamp").collection("classes");
 
 app.get('/allData', async (req,res)=>{
 
     const result = await allDataCollection.find().toArray();
     res.send(result)
 
+})
+
+// selected classes collection
+
+app.post('/classes', async (req,res)=>{
+  const item = req.body
+  const result = await classesCollection.insertOne(item);
+  res.send(result)
 })
 
 app.get('/users',async (req,res)=>{
