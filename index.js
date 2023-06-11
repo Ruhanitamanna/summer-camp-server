@@ -34,7 +34,7 @@ app.get('/', (req,res)=>{
 
 // mongoDB connection and operations
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lruiqni.mongodb.net/?retryWrites=true&w=majority`;
 
 
@@ -51,7 +51,6 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-
     // all About Jwt
 
     app.post('/jwt',(req,res)=>{
@@ -69,6 +68,26 @@ const allDataCollection = client.db("summerCamp").collection("allData");
 const usersCollection = client.db("summerCamp").collection("users");
 const classesCollection = client.db("summerCamp").collection("classes");
 
+// users
+
+app.get('/users',async (req,res)=>{
+  const result = await usersCollection.find().toArray();
+  res.send(result);
+})
+
+app.post('/users', async(req,res)=>{ 
+
+  const user = req.body;
+  console.log(user)
+  const query = {email:user.email}
+  const existingUser = await usersCollection.findOne(query)
+  if(existingUser){
+    return res.send({ message:'user already exist'})
+  }
+  const result = await usersCollection.insertOne(user);
+  res.send(result)
+})
+
 app.get('/allData', async (req,res)=>{
 
     const result = await allDataCollection.find().toArray();
@@ -78,10 +97,30 @@ app.get('/allData', async (req,res)=>{
 
 // selected classes collection
 
+app.get('/classes',  async (req, res) => {
+  const email = req.query.email;
+
+  if (!email) {
+  return  res.send([]);
+  }
+
+  const query = { email: email };
+  const result = await classesCollection.find(query).toArray();
+ return res.send(result);
+});
+
 app.post('/classes', async (req,res)=>{
   const item = req.body
   const result = await classesCollection.insertOne(item);
   res.send(result)
+})
+
+app.delete('/classes/:id', async (req,res)=>{
+const id = req.params.id;
+const query = {_id: new ObjectId(id)};
+const result = await classesCollection.deleteOne(query);
+res.send(result);
+
 })
 
 app.get('/users',async (req,res)=>{
