@@ -2,11 +2,15 @@ const express = require('express');
 const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-require('dotenv').config()
+const stripe = require('stripe')
+require('dotenv').config()(process.env.PAYMENT_SECRET_KEY)
 const  port = process.env.PORT || 5000;
+const corsConfig ={origin:'*',
+credentials:true,methods:['GET','POST','PUT','DELETE']}
  
 //  middleware
-app.use(cors());
+app.use(cors(corsConfig));
+app.options("",cors(corsConfig))
 app.use(express.json());
 
 const verifyJWT = (req,res,next)=>{
@@ -20,6 +24,7 @@ const verifyJWT = (req,res,next)=>{
 
   jwt.verify(token,process.env.ACCESS_TOKEN_SECRET, (err,decoded)=>{
     if(err){
+      console.log(err)
       return res.status(403).send({error:true,message: 'forbidden access'})
     }
     req.decoded = decoded;
@@ -51,7 +56,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
    
 
 
@@ -124,16 +129,31 @@ app.post('/users', async(req,res)=>{
   res.send(result)
 })
 
+//  send data to admin and instructor
+
 app.get('/users/admin/:email', verifyJWT, async (req, res) => {
   const email = req.params.email;
 
   if (req.decoded.email !== email) {
+    
     res.send({ admin: false })
   }
 
   const query = { email: email }
   const user = await usersCollection.findOne(query);
   const result = { admin: user?.role === 'admin' }
+  res.send(result);
+})
+app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
+  const email = req.params.email;
+
+  if (req.decoded.email !== email) {
+    res.send({ instructor: false })
+  }
+
+  const query = { email: email }
+  const user = await usersCollection.findOne(query);
+  const result = { instructor: user?.role === 'instructor' }
   res.send(result);
 })
 
@@ -199,6 +219,22 @@ const query = {_id: new ObjectId(id)};
 const result = await classesCollection.deleteOne(query);
 res.send(result);
 
+})
+
+// create payment intent
+
+app.post('/create-payment-intent', async (req, res) => {
+  const { price } = req.body;
+  const amount = parseInt(price * 100);
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: amount,
+    currency: 'usd',
+    payment_method_types: ['card']
+  });
+
+  res.send({
+    clientSecret: paymentIntent.client_secret
+  })
 })
 
 
