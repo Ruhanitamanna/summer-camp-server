@@ -6,7 +6,8 @@ require('dotenv').config()
 const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const  port = process.env.PORT || 5000;
 const corsConfig ={origin:'*',
-credentials:true,methods:['GET','POST','PUT','DELETE']}
+credentials:true,
+methods:['GET','POST','PUT',"PATCH",'DELETE','OPTIONS']}
  
 //  middleware
 app.use(cors(corsConfig));
@@ -65,6 +66,7 @@ async function run() {
 const allDataCollection = client.db("summerCamp").collection("allData");
 const usersCollection = client.db("summerCamp").collection("users");
 const classesCollection = client.db("summerCamp").collection("classes");
+const paymentsCollection = client.db("summerCamp").collection("payments");
 
 
  // all About Jwt
@@ -110,11 +112,11 @@ app.get('/users',verifyJWT,verifyAdmin,  async (req,res)=>{
   res.send(result);
 })
 
-// app.get('/users', async (req,res)=>{
-//   const result = await usersCollection.find().toArray();
-//   res.send(result)
+app.get('/users',verifyJWT,verifyInstructor, async (req,res)=>{
+  const result = await usersCollection.find().toArray();
+  res.send(result)
 
-// })
+})
 
 app.post('/users', async(req,res)=>{ 
 
@@ -172,14 +174,14 @@ app.patch('/users/admin/:id', async (req,res)=>
    res.send(result);
 })
 
-// Instructor
-app.patch('/users/Instructor/:id', async (req,res)=>
+// instructor
+app.patch('/users/instructor/:id', async (req,res)=>
 {
   const id = req.params.id;
   const filter = {_id: new ObjectId(id)};
    const updateDoc = {
     $set: {
-      role: 'Instructor'
+      role: 'instructor'
     },
    };
    const result = await usersCollection.updateOne(filter,updateDoc);
@@ -195,11 +197,17 @@ app.get('/allData', async (req,res)=>{
 
 // selected classes collection
 
+app.get('/classes',async (req,res)=>{
+  const result = await classesCollection.find().toArray();
+  res.send(result)
+})
+
+
 app.get('/classes',  async (req, res) => {
   const email = req.query.email;
 
   if (!email) {
-  return  res.send([]);
+  return  res.send([]);      
   }
 
   const query = { email: email };
@@ -211,6 +219,15 @@ app.post('/classes', async (req,res)=>{
   const item = req.body
   const result = await classesCollection.insertOne(item);
   res.send(result)
+})
+app.post('/classes', async (req,res)=>{
+  const newItem = req.body
+  newItem.status = 'pending';
+  const result = await classesCollection.insertOne(newItem);
+  res.send(result).catch (error); {
+    console.error('Error creating class:', error);
+    res.status(500).send({ error: true, message: 'Failed to create class' });
+  }
 })
 
 app.delete('/classes/:id', async (req,res)=>{
@@ -235,6 +252,15 @@ app.post('/create-payment-intent',verifyJWT, async (req, res) => {
   res.send({
     clientSecret: paymentIntent.client_secret
   })
+})
+
+
+
+app.post('/payments', verifyJWT, async (req,res)=>{
+  const payment = req.body;
+  const insertResult = await paymentsCollection.insertOne(payment);
+  // const query = {_id:{ $in: payment.classId}}
+  res.send(insertResult)
 })
 
 
