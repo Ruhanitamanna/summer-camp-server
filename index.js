@@ -254,13 +254,21 @@ app.post('/create-payment-intent',verifyJWT, async (req, res) => {
   })
 })
 
+app.get('/payments',async (req,res)=>{
+  const result = await paymentsCollection.find().toArray();
+  res.send(result)
+})
+
 
 
 app.post('/payments', verifyJWT, async (req,res)=>{
   const payment = req.body;
+  const classId = req.body.classId;
   const insertResult = await paymentsCollection.insertOne(payment);
-  // const query = {_id:{ $in: payment.classId}}
-  res.send(insertResult)
+  const query = {_id: new ObjectId(classId)};
+
+  const deleteResult =  await classesCollection.deleteOne(query)
+  res.send(insertResult,deleteResult)
 })
 
 
